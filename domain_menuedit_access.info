@@ -1,0 +1,5 @@
+name = Domain Menu Edit Access
+description = Restricts the access to the menu edit page per domain.
+package = Domain Access
+dependencies[] = domain
+core = 7.x

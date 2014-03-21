@@ -1,0 +1,242 @@
+<?php
+
+/**
+ * @file
+ *  Restricts the access to the menu edit page per domain.
+ */
+
+/**
+ * Implements hook_permission().
+ */
+function domain_menuedit_access_permission() {
+  return array(
+    'administer domain menus' => array(
+      'title' => t('Administer menus assigned to domains'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ *
+ * Domain Locale only provides administrative menu items.
+ */
+function domain_menuedit_access_menu() {
+  $items = array();
+  // Menu items for configuring languages.
+  $items['admin/structure/domain/view/%domain/menus'] = array(
+    'title' => 'Menus',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'domain_menuedit_access_admin',
+    'page arguments' => array(4),
+    'access arguments' => array('administer domains'),
+    'file' => 'domain_menuedit_access.admin.inc',
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_menu_alter().
+ */
+function domain_menuedit_access_menu_alter(&$menu) {
+  $menu['admin/structure/menu']['page callback'] = 'domain_menuedit_access_menu_overview_page';
+  $menu['admin/structure/menu']['access callback'] = 'domain_menuedit_access_access';
+
+  // The pages with the menu links and menu management.
+  $menu['admin/structure/menu/manage/%menu']['access callback'] = 'domain_menuedit_access_edit_access';
+  $menu['admin/structure/menu/manage/%menu']['access arguments'] = array(4);
+
+  $menu['admin/structure/menu/manage/%menu/list']['access callback'] = 'domain_menuedit_access_edit_access';
+  $menu['admin/structure/menu/manage/%menu/list']['access arguments'] = array(4);
+
+  $menu['admin/structure/menu/manage/%menu/add']['access callback'] = 'domain_menuedit_access_edit_access';
+  $menu['admin/structure/menu/manage/%menu/add']['access arguments'] = array(4);
+
+  $menu['admin/structure/menu/manage/%menu/edit']['access callback'] = 'domain_menuedit_access_edit_access';
+  $menu['admin/structure/menu/manage/%menu/edit']['access arguments'] = array(4);
+
+  $menu['admin/structure/menu/item/%menu_link/edit']['access callback'] = 'domain_menuedit_access_edit_link_access';
+  $menu['admin/structure/menu/item/%menu_link/edit']['access arguments'] = array(4);
+
+  $menu['admin/structure/menu/item/%menu_link/reset']['access callback'] = 'domain_menuedit_access_edit_link_access';
+  $menu['admin/structure/menu/item/%menu_link/reset']['access arguments'] = array(4);
+
+  $menu['admin/structure/menu/item/%menu_link/delete']['access callback'] = 'domain_menuedit_access_edit_link_access';
+  $menu['admin/structure/menu/item/%menu_link/delete']['access arguments'] = array(4);
+}
+
+/**
+ * Menu access callback for the menu overview page.
+ */
+function domain_menuedit_access_access() {
+  if (user_access('administer menu') || user_access('administer domain menus')) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Access callback for the menu edit page (and also for the links management.
+ */
+function domain_menuedit_access_edit_access($menu) {
+  // First, the user must have access to edit menus in general, or per domains.
+  if (domain_menuedit_access_access()) {
+    if (user_access('administer menu')) {
+      return TRUE;
+    }
+    // Now, check if the user really has access to edit the menu.
+    $menu_names = domain_menuedit_access_get_menus_for_account();
+    if (!empty($menu_names[$menu['menu_name']])) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * Access callback for the menu edit page (and also for the links management.
+ */
+function domain_menuedit_access_edit_link_access($menu_link) {
+  // First, the user must have access to edit menus in general, or per domains.
+  if (domain_menuedit_access_access()) {
+    if (user_access('administer menu')) {
+      return TRUE;
+    }
+    // Now, check if the user really has access to edit the menu.
+    $menu_names = domain_menuedit_access_get_menus_for_account();
+    if (!empty($menu_names[$menu_link['menu_name']])) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * Overwrites the menu_overview_page() to show ony menus that the user is
+ * able to edit, based on the domains.
+ */
+function domain_menuedit_access_menu_overview_page() {
+  // If the user is however able to edit all the menus, then just fallback to
+  // the default page callback.
+  if (user_access('administer menu')) {
+    // Make sure the menu.admin.inc is included.
+    module_load_include('inc', 'menu', 'menu.admin');
+    return menu_overview_page();
+  }
+  $menu_names = domain_menuedit_access_get_menus_for_account();
+  if (!empty($menu_names)) {
+    return array('#markup' => domain_menuedit_access_overview_page($menu_names));
+  }
+  else {
+    return array('#markup' => t('No menu available for edit.'));
+  }
+}
+
+/**
+ * This is identical with menu_overview_page(), but it has a parameter.
+ *
+ * @param array $menu_names
+ *  An array with menu names that should be shown.
+ */
+function domain_menuedit_access_overview_page($menu_names = array()) {
+  $query = db_select('menu_custom', 'mc')->fields('mc');
+  if (!empty($menu_names)) {
+    $query->condition('mc.menu_name', $menu_names, 'IN');
+  }
+  $query->orderBy('mc.title');
+  $result = $query->execute()->fetchAll(PDO::FETCH_ASSOC);
+  $header = array(t('Title'), array('data' => t('Operations'), 'colspan' => '3'));
+  $rows = array();
+  foreach ($result as $menu) {
+    $row = array(theme('menu_admin_overview', array('title' => $menu['title'], 'name' => $menu['menu_name'], 'description' => $menu['description'])));
+    $row[] = array('data' => l(t('list links'), 'admin/structure/menu/manage/' . $menu['menu_name']));
+    $row[] = array('data' => l(t('edit menu'), 'admin/structure/menu/manage/' . $menu['menu_name'] . '/edit'));
+    $row[] = array('data' => l(t('add link'), 'admin/structure/menu/manage/' . $menu['menu_name'] . '/add'));
+    $rows[] = $row;
+  }
+  return theme('table', array('header' => $header, 'rows' => $rows));
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function domain_menuedit_access_form_menu_edit_item_alter(&$form, &$form_state) {
+  // If the user does not have the permission to edit all the menus, then we
+  // hide all the options for the 'parent' item that do not belong to a menu to
+  // which the user has access.
+  if (!user_access('administer menu')) {
+    $menu_names = domain_menuedit_access_get_menus_for_account();
+    foreach ($form['parent']['#options'] as $key => $value) {
+      $words = explode(':', $key);
+      if (!empty($words[0]) && empty($menu_names[$words[0]])) {
+        unset($form['parent']['#options'][$key]);
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_domain_load().
+ */
+function domain_menuedit_access_domain_load(&$domain) {
+  // Attach the information from the domain_menuedit table.
+  $result = domain_menuedit_access_get_menus_for_domain($domain['domain_id']);
+  $domain['menus'] = $result;
+}
+
+/**
+ * Returns the available menus for a domain.
+ *
+ * @param int $domain_id
+ *  The domain id.
+ */
+function domain_menuedit_access_get_menus_for_domain($domain_id) {
+  $query = db_select('domain_menuedit', 'dm')->fields('dm', array('menu_name'));
+  $query->condition('dm.domain_id', $domain_id);
+  $result = $query->execute()->fetchAllKeyed(0, 0);
+  return $result;
+}
+
+/**
+ * Returns all the menus to which an account has access for edit.
+ *
+ * @param object $account
+ *  The user account object.
+ */
+function domain_menuedit_access_get_menus_for_account($account = NULL) {
+  global $user;
+  if (empty($account)) {
+    $account = clone $user;
+  }
+  $domains = array_filter($account->domain_user);
+  $menu_names = array();
+  foreach ($domains as $domain_id) {
+    $menus = domain_menuedit_access_get_menus_for_domain($domain_id);
+    if (!empty($menus)) {
+      $menu_names = array_merge($menu_names, $menus);
+    }
+  }
+  return $menu_names;
+}
+
+/**
+ * Updates the menu assignment per domains.
+ *
+ * @param int $domain_id
+ *  The id of the domain.
+ *
+ * @param array $menu_names
+ *  An array with menu names that will be assigned to the domain. All other will
+ *  be deleted from the domain.
+ */
+function domain_menuedit_access_update_menus($domain_id, $menu_names) {
+  // @todo: Handle any errors if they could happen.
+  db_delete('domain_menuedit')->condition('domain_id', $domain_id)->execute();
+  if (!empty($menu_names)) {
+    $insert = db_insert('domain_menuedit')->fields(array('domain_id', 'menu_name'));
+    foreach ($menu_names as $menu_name) {
+      $insert->values(array('domain_id' => $domain_id, 'menu_name' => $menu_name));
+    }
+    $insert->execute();
+  }
+}

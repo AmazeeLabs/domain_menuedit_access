@@ -1,0 +1,31 @@
+<?php
+
+/**
+ * @file
+ *  Install file for the menu edit.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function domain_menuedit_access_schema() {
+  $schema['domain_menuedit'] = array(
+    'description' => 'Stores menu assignment per domain.',
+    'fields' => array(
+      'domain_id' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0
+      ),
+      'menu_name' => array(
+        'description' => 'The menu name.',
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+      )
+    ),
+    'primary key' => array('domain_id', 'menu_name'),
+  );
+  return $schema;
+}
