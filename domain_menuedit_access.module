@@ -206,7 +206,7 @@ function domain_menuedit_access_get_menus_for_domain($domain_id) {
 function domain_menuedit_access_get_menus_for_account($account = NULL) {
   global $user;
   if (empty($account)) {
-    $account = clone $user;
+    $account = user_load($user->uid);
   }
   $domains = array_filter($account->domain_user);
   $menu_names = array();
