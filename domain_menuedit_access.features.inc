@@ -8,8 +8,8 @@ function domain_menuedit_access_features_export($data, &$export, $module_name = 
   $export['dependencies']['features'] = 'features';
   $export['dependencies']['domain_menuedit_access'] = 'domain_menuedit_access';
   $options = domain_menuedit_access_features_export_options();
-  foreach ($options as $domain_id => $name) {
-    $export['features']['domain_menuedit_access'][$domain_id] = $domain_id;
+  foreach ($options as $domain_name => $site_name) {
+    $export['features']['domain_menuedit_access'][$domain_name] = $site_name;
   }
 }
 
@@ -21,7 +21,7 @@ function domain_menuedit_access_features_export_options() {
 
   if ($domains = domain_domains()) {
     foreach ($domains as $domain) {
-      $options[$domain['domain_id']] = $domain['sitename'];
+      $options[$domain['machine_name']] = $domain['sitename'];
     }
   }
   return $options;
@@ -31,12 +31,11 @@ function domain_menuedit_access_features_export_options() {
  * Implements hook_features_export_render().
  */
 function domain_menuedit_access_features_export_render($module, $data, $export = NULL) {
-  $domains = domain_domains();
   $output = array();
   $output[] = '  $items = array(';
-  foreach ($data as $domain_id) {
-    if (isset($domains[$domain_id])) {
-      $output[] = "    '{$domain_id}' => " . features_var_export(domain_menuedit_access_get_menus_for_domain($domain_id), '    ') . ",";
+  foreach ($data as $domain_name => $site_name) {
+    if ($domain_id = domain_load_domain_id($domain_name)) {
+      $output[] = "    '{$domain_name}' => " . features_var_export(domain_menuedit_access_get_menus_for_domain($domain_id), '    ') . ",";
     }
   }
   $output[] = '  );';
@@ -51,8 +50,13 @@ function domain_menuedit_access_features_export_render($module, $data, $export =
 function domain_menuedit_access_features_revert($module = NULL) {
   if (module_hook($module, 'domain_menuedit_access_default')) {
     $defaults = module_invoke($module, 'domain_menuedit_access_default');
-    foreach ($defaults as $domain_id => $menu_names) {
-      domain_menuedit_access_update_menus($domain_id, $menu_names);
+    foreach ($defaults as $domain_name => $menu_names) {
+      if ($domain_id = domain_load_domain_id($domain_name)) {
+        domain_menuedit_access_update_menus($domain_id, $menu_names);
+      }
+      else {
+        drupal_set_message(t('Could not find domain !domain.', array('!domain' => $domain_name)), 'error');
+      }
     }
   }
   else {
