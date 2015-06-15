@@ -36,6 +36,22 @@ function domain_menuedit_access_menu() {
 }
 
 /**
+ * Implements hook_features_api().
+ */
+function domain_menuedit_access_features_api() {
+  $features = array();
+
+  $features['domain_menuedit_access'] = array(
+    'name' => t('Domain menuedit access'),
+    'feature_source' => TRUE,
+    'default_hook' => 'domain_menuedit_access_default',
+    'file' => drupal_get_path('module', 'domain_menuedit_access') . '/domain_menuedit_access.features.inc',
+  );
+
+  return $features;
+}
+
+/**
  * Implements hook_menu_alter().
  */
 function domain_menuedit_access_menu_alter(&$menu) {
