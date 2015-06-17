@@ -33,7 +33,7 @@ function domain_menuedit_access_features_export_options() {
 function domain_menuedit_access_features_export_render($module, $data, $export = NULL) {
   $output = array();
   $output[] = '  $items = array(';
-  foreach ($data as $domain_name => $site_name) {
+  foreach ($data as $domain_name) {
     if ($domain_id = domain_load_domain_id($domain_name)) {
       $output[] = "    '{$domain_name}' => " . features_var_export(domain_menuedit_access_get_menus_for_domain($domain_id), '    ') . ",";
     }
