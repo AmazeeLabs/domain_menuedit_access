@@ -43,8 +43,10 @@ function domain_menuedit_access_features_api() {
 
   $features['domain_menuedit_access'] = array(
     'name' => t('Domain menuedit access'),
-    'feature_source' => TRUE,
     'default_hook' => 'domain_menuedit_access_default',
+    'default_file' => FEATURES_DEFAULTS_CUSTOM,
+    'default_filename' => 'domains',
+    'feature_source' => TRUE,
     'file' => drupal_get_path('module', 'domain_menuedit_access') . '/domain_menuedit_access.features.inc',
   );
 

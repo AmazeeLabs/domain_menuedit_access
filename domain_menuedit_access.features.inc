@@ -7,9 +7,9 @@ function domain_menuedit_access_features_export($data, &$export, $module_name = 
   // Add required dependencies.
   $export['dependencies']['features'] = 'features';
   $export['dependencies']['domain_menuedit_access'] = 'domain_menuedit_access';
-  $options = domain_menuedit_access_features_export_options();
-  foreach ($options as $domain_name => $site_name) {
-    $export['features']['domain_menuedit_access'][$domain_name] = $site_name;
+  $list = domain_features_selection($data);
+  foreach ($list as $machine_name) {
+    $export['features']['domain_menuedit_access'][$machine_name] = $machine_name;
   }
 }
 
@@ -48,8 +48,8 @@ function domain_menuedit_access_features_export_render($module, $data, $export =
  * Implements hook_features_revert().
  */
 function domain_menuedit_access_features_revert($module = NULL) {
-  if (module_hook($module, 'domain_menuedit_access_default')) {
-    $defaults = module_invoke($module, 'domain_menuedit_access_default');
+  if (domain_features_load($module, 'domain_menuedit_access_default')) {
+    $defaults = domain_features_load($module, 'domain_menuedit_access_default');
     foreach ($defaults as $domain_name => $menu_names) {
       if ($domain_id = domain_load_domain_id($domain_name)) {
         domain_menuedit_access_update_menus($domain_id, $menu_names);
