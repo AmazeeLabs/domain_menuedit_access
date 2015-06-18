@@ -240,3 +240,30 @@ function domain_menuedit_access_update_menus($domain_id, $menu_names) {
     $insert->execute();
   }
 }
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ *
+ * Changes access to menu item fields in the node form.
+ *
+ * @see menu_form_node_form_alter()
+ */
+function domain_menuedit_access_form_node_form_alter(&$form, $form_state) {
+  if (isset($form['menu'])) {
+    $form['menu']['#access'] = domain_menuedit_access_access();
+  }
+}
+
+/**
+ * Implements hook_module_implements_alter().
+ */
+function domain_menuedit_access_module_implements_alter(&$implementations, $hook) {
+  // Make sure domain_menuedit_access_form_node_form_alter() is executed after
+  // menu_form_node_form_alter().
+  $module = 'domain_menuedit_access';
+  if ($hook == 'form_alter' && isset($implementations[$module])) {
+    $group = $implementations[$module];
+    unset($implementations[$module]);
+    $implementations[$module] = $group;
+  }
+}
